@@ -213,7 +213,16 @@ with MailBox(GLOBAL_IMAP_SERVER).login(GLOBAL_USERNAME, GLOBAL_PASSWORD) as mail
     print("Processing existing messages...")
     # process existing messages
     for msg in mailbox.fetch():
-        process_message(msg)
+        try:
+            process_message(msg)
+        except Exception as ex:
+            print(ex)
+            print(f"Message from {msg.from_} failed; exception above occurred")
+            send_message(msg.from_, f"[Ingest Failed] Re: {msg.subject}",
+                         f"The incoming scan '{msg.subject}' failed to process due to a server error. " +
+                         f"Please contact the Helpdesk if this problem continues.",
+                         msg.headers['Message-ID'])
+
         mailbox.delete(msg.uid)
 
     no_poll_error = True
