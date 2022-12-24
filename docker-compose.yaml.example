@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  pdfprocessor:
+    build:
+      context: '.'
+      network: host
+    restart: unless-stopped
+    environment:
+      - IMAP_SERVER=imap.example.com
+      - SMTP_SERVER=smtp.example.com
+      - FROM_EMAIL=email@example.com
+      - FROM_NAME=PDF Processing Server
+      - USERNAME=email@example.com
+      - PASSWORD=passwordgoeshere
+      - TZ=America/Chicago
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"

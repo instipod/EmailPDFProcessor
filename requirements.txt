@@ -1,0 +1,7 @@
+pypdfium2
+pillow
+pyzbar
+pypdf2
+reportlab
+imap-tools
+pytz
