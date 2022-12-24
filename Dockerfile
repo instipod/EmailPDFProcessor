@@ -18,6 +18,8 @@ ENV FROM_EMAIL "pdfprocessor@localhost"
 ENV FROM_NAME "PDF Processor"
 ENV USERNAME "username"
 ENV PASSWORD "password"
+ENV INCLUDE_RECV_WATERMARK "true"
+ENV INCLUDE_PAGE_NUMBERS "true"
 ENV TZ "America/Chicago"
 
 CMD ["python3", "-u", "/app/main.py"]

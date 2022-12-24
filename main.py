@@ -25,6 +25,8 @@ GLOBAL_ALLOWED_SENDER_DOMAINS = os.environ.get("ALLOWED_SENDER_DOMAINS")
 GLOBAL_PDF_SAVE_LOCATION = os.environ.get("PDF_SAVE_LOCATION")
 GLOBAL_BARCODE_VALIDATION_REGEX = os.environ.get("BARCODE_VALIDATION_REGEX")
 GLOBAL_BARCODE_TYPES = os.environ.get("BARCODE_TYPES")
+GLOBAL_INCLUDE_PAGE_NUMBERS = (os.environ.get("INCLUDE_PAGE_NUMBERS").lower() == "true")
+GLOBAL_INCLUDE_RECV_WATERMARK = (os.environ.get("INCLUDE_RECV_WATERMARK").lower() == "true")
 
 
 def read_barcodes(frame):
@@ -94,7 +96,7 @@ def watermark_pdf(pdffile, watermark_texts, name):
     :param name: Filename of the exported PDF
     :return: None
     """
-    global GLOBAL_PDF_SAVE_LOCATION
+    global GLOBAL_PDF_SAVE_LOCATION, GLOBAL_INCLUDE_PAGE_NUMBERS, GLOBAL_INCLUDE_RECV_WATERMARK
     pdf_file_byte_stream = io.BytesIO(pdffile)
     packet = io.BytesIO()
     can = canvas.Canvas(packet, pagesize=letter)
@@ -117,9 +119,11 @@ def watermark_pdf(pdffile, watermark_texts, name):
 
     # for each page of the existing pdf, add the watermark pdf overlay and the page number overlay
     for existing_page in existing_pdf.pages:
-        existing_page.merge_page(new_pdf.pages[0])
-        page_number_page = create_page_number_pdf_page(page_number, page_count)
-        existing_page.merge_page(page_number_page)
+        if GLOBAL_INCLUDE_RECV_WATERMARK:
+            existing_page.merge_page(new_pdf.pages[0])
+        if GLOBAL_INCLUDE_PAGE_NUMBERS:
+            page_number_page = create_page_number_pdf_page(page_number, page_count)
+            existing_page.merge_page(page_number_page)
         output.add_page(existing_page)
         page_number += 1
 
