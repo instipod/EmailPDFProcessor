@@ -24,6 +24,7 @@ ENV USERNAME "username"
 ENV PASSWORD "password"
 ENV INCLUDE_RECV_WATERMARK "true"
 ENV INCLUDE_PAGE_NUMBERS "true"
+ENV SEND_SUCCESS_REPLY "true"
 ENV TZ "America/Chicago"
 
 CMD ["python3", "-u", "/app/main.py"]
