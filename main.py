@@ -2,6 +2,7 @@ import io
 import smtplib
 import re
 import os
+import ssl
 from datetime import datetime
 
 import pypdfium2 as pdfium
@@ -20,7 +21,11 @@ GLOBAL_DISPLAY_NAME = os.environ.get("FROM_NAME")
 GLOBAL_USERNAME = os.environ.get("USERNAME")
 GLOBAL_PASSWORD = os.environ.get("PASSWORD")
 GLOBAL_IMAP_SERVER = os.environ.get("IMAP_SERVER")
+GLOBAL_IMAP_PORT = os.environ.get("IMAP_PORT")
+GLOBAL_IMAP_SECURE = (os.environ.get("IMAP_SECURE").lower() == "true")
 GLOBAL_SMTP_SERVER = os.environ.get("SMTP_SERVER")
+GLOBAL_SMTP_PORT = os.environ.get("SMTP_PORT")
+GLOBAL_SMTP_SECURE = (os.environ.get("SMTP_SECURE").lower() == "true")
 GLOBAL_ALLOWED_SENDER_DOMAINS = os.environ.get("ALLOWED_SENDER_DOMAINS")
 GLOBAL_PDF_SAVE_LOCATION = os.environ.get("PDF_SAVE_LOCATION")
 GLOBAL_BARCODE_VALIDATION_REGEX = os.environ.get("BARCODE_VALIDATION_REGEX")
@@ -151,7 +156,10 @@ def send_message(to, subject, body, message_id=None):
     new_msg['User-Agent', 'PDF Processor']
     if message_id is not None:
         new_msg['In-Reply-To', message_id]
-    s = smtplib.SMTP(GLOBAL_SMTP_SERVER)
+    s = smtplib.SMTP(GLOBAL_SMTP_SERVER, GLOBAL_SMTP_PORT)
+    if GLOBAL_SMTP_SECURE:
+        context = ssl.create_default_context()
+        s.starttls(context=context)
     s.login(GLOBAL_USERNAME, GLOBAL_PASSWORD)
     s.sendmail(GLOBAL_FROM, [to], new_msg.as_string())
     s.quit()
@@ -213,7 +221,14 @@ def process_message(message):
 # start of main code
 print("Connecting to IMAP...")
 
-with MailBox(GLOBAL_IMAP_SERVER).login(GLOBAL_USERNAME, GLOBAL_PASSWORD) as mailbox:
+imap = None
+if GLOBAL_IMAP_SECURE:
+    ssl_context = ssl.create_default_context()
+    imap = MailBox(GLOBAL_IMAP_SERVER, GLOBAL_IMAP_PORT, ssl_context=ssl_context)
+else:
+    imap = MailBox(GLOBAL_IMAP_SERVER, GLOBAL_IMAP_PORT)
+
+with imap.login(GLOBAL_USERNAME, GLOBAL_PASSWORD) as mailbox:
     print("Processing existing messages...")
     # process existing messages
     for msg in mailbox.fetch():
