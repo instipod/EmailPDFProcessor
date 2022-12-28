@@ -32,6 +32,7 @@ GLOBAL_BARCODE_VALIDATION_REGEX = os.environ.get("BARCODE_VALIDATION_REGEX")
 GLOBAL_BARCODE_TYPES = os.environ.get("BARCODE_TYPES")
 GLOBAL_INCLUDE_PAGE_NUMBERS = (os.environ.get("INCLUDE_PAGE_NUMBERS").lower() == "true")
 GLOBAL_INCLUDE_RECV_WATERMARK = (os.environ.get("INCLUDE_RECV_WATERMARK").lower() == "true")
+GLOBAL_SEND_SUCCESS_REPLY = (os.environ.get("SEND_SUCCESS_REPLY").lower() == "true")
 
 
 def read_barcodes(frame):
@@ -153,9 +154,13 @@ def send_message(to, subject, body, message_id=None):
     new_msg['From'] = f"\"{GLOBAL_DISPLAY_NAME}\" <{GLOBAL_FROM}>"
     new_msg['To'] = to
     new_msg['Date'] = formatdate(localtime=True)
-    new_msg['User-Agent', 'PDF Processor']
+    new_msg['User-Agent'] = 'PDF Processor'
     if message_id is not None:
-        new_msg['In-Reply-To', message_id]
+        new_msg['In-Reply-To'] = message_id
+        new_msg['X-Orig-Message'] = message_id
+
+    print(f"Sending message to {to} with subject {subject}")
+
     s = smtplib.SMTP(GLOBAL_SMTP_SERVER, GLOBAL_SMTP_PORT)
     if GLOBAL_SMTP_SECURE:
         context = ssl.create_default_context()
@@ -202,20 +207,25 @@ def process_message(message):
                 watermark_pdf(pdf_bytes,
                               [f"{str(barcodes[0].data, 'utf-8')}", f"{date_string} by {uploader}"],
                               str(barcodes[0].data, 'utf-8'))
+                print(f"Message from {sender} processed")
+                if GLOBAL_SEND_SUCCESS_REPLY:
+                    send_message(sender, f"[Processed OK] Re: {message.subject}",
+                                 f"The document in message '{message.subject}' was successfully processed.",
+                                 message.headers['message-id'][0])
             else:
                 print(f"Message from {sender} declined; no valid barcode detected")
                 send_message(sender, f"[Ingest Failed] Re: {message.subject}",
                              f"The incoming scan '{message.subject}' was declined as it did " +
-                             "not contain a single valid barcode.", message.headers['Message-ID'])
+                             "not contain a single valid barcode.", message.headers['message-id'][0])
         else:
             print(f"Message from {sender} declined; invalid type of attachments: {attachment.content_type}")
             send_message(sender, f"[Ingest Failed] Re: {message.subject}",
                          f"The incoming scan '{message.subject}' was declined as it did " +
-                         "not contain a valid type of attachment.", message.headers['Message-ID'])
+                         "not contain a valid type of attachment.", message.headers['message-id'][0])
     else:
         print(f"Message from {sender} declined; invalid number of attachments: {attachment_count}")
         send_message(sender, f"[Ingest Failed] Re: {message.subject}", f"The incoming scan '{message.subject}' was declined as it did " +
-                     "not contain the correct number of attachments.", message.headers['Message-ID'])
+                     "not contain the correct number of attachments.", message.headers['message-id'][0])
 
 
 # start of main code
@@ -240,7 +250,7 @@ with imap.login(GLOBAL_USERNAME, GLOBAL_PASSWORD) as mailbox:
             send_message(msg.from_, f"[Ingest Failed] Re: {msg.subject}",
                          f"The incoming scan '{msg.subject}' failed to process due to a server error. " +
                          f"Please contact the Helpdesk if this problem continues.",
-                         msg.headers['Message-ID'])
+                         msg.headers['message-id'][0])
 
         mailbox.delete(msg.uid)
 
@@ -261,7 +271,7 @@ with imap.login(GLOBAL_USERNAME, GLOBAL_PASSWORD) as mailbox:
                         send_message(msg.from_, f"[Ingest Failed] Re: {msg.subject}",
                                      f"The incoming scan '{msg.subject}' failed to process due to a server error. " +
                                      f"Please contact the Helpdesk if this problem continues.",
-                                     msg.headers['Message-ID'])
+                                     msg.headers['message-id'][0])
 
                     mailbox.delete(msg.uid)
         except Exception as ex2:
