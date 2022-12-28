@@ -2,11 +2,12 @@ FROM python:3.10-bullseye
 
 RUN mkdir /app && mkdir /app/files
 WORKDIR /app
-COPY requirements.txt /app/requirements.txt
-COPY main.py /app/main.py
 
+COPY requirements.txt /app/requirements.txt
 RUN apt-get update && apt-get install -y libzbar0
 RUN pip3 install -r requirements.txt
+
+COPY main.py /app/main.py
 
 ENV BARCODE_VALIDATION_REGEX "^[1-9][0-9]{1,7}$"
 ENV BARCODE_TYPES "CODE39;CODE128"
