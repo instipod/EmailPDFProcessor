@@ -3,6 +3,7 @@ import smtplib
 import re
 import os
 import ssl
+import subprocess
 from datetime import datetime
 
 import pypdfium2 as pdfium
@@ -33,7 +34,8 @@ GLOBAL_BARCODE_TYPES = os.environ.get("BARCODE_TYPES")
 GLOBAL_INCLUDE_PAGE_NUMBERS = (os.environ.get("INCLUDE_PAGE_NUMBERS").lower() == "true")
 GLOBAL_INCLUDE_RECV_WATERMARK = (os.environ.get("INCLUDE_RECV_WATERMARK").lower() == "true")
 GLOBAL_SEND_SUCCESS_REPLY = (os.environ.get("SEND_SUCCESS_REPLY").lower() == "true")
-
+GLOBAL_NAME_PREFIX = os.environ.get("NAME_PREFIX")
+PROCESSING_COMMAND = os.environ.get("PROCESSING_COMMAND")
 
 def read_barcodes(frame):
     """
@@ -102,7 +104,8 @@ def watermark_pdf(pdffile, watermark_texts, name):
     :param name: Filename of the exported PDF
     :return: None
     """
-    global GLOBAL_PDF_SAVE_LOCATION, GLOBAL_INCLUDE_PAGE_NUMBERS, GLOBAL_INCLUDE_RECV_WATERMARK
+    global GLOBAL_PDF_SAVE_LOCATION, GLOBAL_INCLUDE_PAGE_NUMBERS, GLOBAL_INCLUDE_RECV_WATERMARK, \
+        GLOBAL_NAME_PREFIX, PROCESSING_COMMAND
     pdf_file_byte_stream = io.BytesIO(pdffile)
     packet = io.BytesIO()
     can = canvas.Canvas(packet, pagesize=letter)
@@ -134,9 +137,17 @@ def watermark_pdf(pdffile, watermark_texts, name):
         page_number += 1
 
     # finally, write "output" to a real file
-    output_stream = open(f"{GLOBAL_PDF_SAVE_LOCATION}/{name}.pdf", "wb")
+    output_stream = open(f"{GLOBAL_PDF_SAVE_LOCATION}/{GLOBAL_NAME_PREFIX}{name}.pdf", "wb")
     output.write(output_stream)
     output_stream.close()
+
+    if len(PROCESSING_COMMAND) > 0:
+        #run an after processing command
+        return_code = subprocess.call(
+            PROCESSING_COMMAND.replace("{f}", f"{GLOBAL_PDF_SAVE_LOCATION}/{GLOBAL_NAME_PREFIX}{name}.pdf"),
+            shell=True)
+        if return_code != 0:
+            print(f"External processing command returned error code {return_code}!")
 
 
 def send_message(to, subject, body, message_id=None):
@@ -210,7 +221,8 @@ def process_message(message):
                 print(f"Message from {sender} processed")
                 if GLOBAL_SEND_SUCCESS_REPLY:
                     send_message(sender, f"[Processed OK] Re: {message.subject}",
-                                 f"The document in message '{message.subject}' was successfully processed.",
+                                 f"The document in message '{message.subject}' was successfully processed.  The barcode"
+                                 f" detected in the document was {str(barcodes[0].data, 'utf-8')}.",
                                  message.headers['message-id'][0])
             else:
                 print(f"Message from {sender} declined; no valid barcode detected")

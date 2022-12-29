@@ -27,5 +27,7 @@ ENV INCLUDE_RECV_WATERMARK "true"
 ENV INCLUDE_PAGE_NUMBERS "true"
 ENV SEND_SUCCESS_REPLY "true"
 ENV TZ "America/Chicago"
+ENV NAME_PREFIX ""
+ENV PROCESSING_COMMAND "exit 0"
 
 CMD ["python3", "-u", "/app/main.py"]
